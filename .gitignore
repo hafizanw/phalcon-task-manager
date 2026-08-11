@@ -1,0 +1,47 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Dependencies
+/vendor/
+src/vendor/
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Cache
+cache/
+tmp/
+temp/
+
+# PHP
+.phpunit.result.cache
+
+# Composer
+composer.phar
+
+# Docker
+docker-compose.override.yml
+
+# Test / Coverage
+coverage/
+.phpunit.cache/
+
+# Runtime
+storage/logs/
+storage/cache/
+
+# Phalcon
+src/app/cache/

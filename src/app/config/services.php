@@ -1,122 +1,108 @@
 <?php
+
 declare(strict_types=1);
 
-use Phalcon\Html\Escaper;
-use Phalcon\Flash\Direct as Flash;
-use Phalcon\Mvc\Model\Metadata\Memory as MetaDataAdapter;
+use Phalcon\Di\FactoryDefault;
+use Phalcon\Http\Request;
+use Phalcon\Mvc\Router;
 use Phalcon\Mvc\View;
 use Phalcon\Mvc\View\Engine\Php as PhpEngine;
-use Phalcon\Mvc\View\Engine\Volt as VoltEngine;
-use Phalcon\Session\Adapter\Stream as SessionAdapter;
-use Phalcon\Session\Manager as SessionManager;
-use Phalcon\Mvc\Url as UrlResolver;
+use Phalcon\Db\Adapter\Pdo\Mysql;
 
-/**
- * Shared configuration service
- */
+$di = new FactoryDefault();
+
+
+// ============================================================
+// CONFIG
+// ============================================================
+
 $di->setShared('config', function () {
-    return include APP_PATH . "/config/config.php";
+    return require BASE_PATH . '/app/config/config.php';
 });
 
-/**
- * The URL component is used to generate all kind of urls in the application
- */
-$di->setShared('url', function () {
-    $config = $this->getConfig();
 
-    $url = new UrlResolver();
-    $url->setBaseUri($config->application->baseUri);
+// ============================================================
+// REQUEST
+// ============================================================
 
-    return $url;
+$di->setShared('request', function () {
+    return new Request();
 });
 
-/**
- * Setting up the view component
- */
+
+// ============================================================
+// ROUTER
+// ============================================================
+
+$di->setShared('router', function () {
+
+    $router = new Router();
+
+    // Namespace default untuk controller
+    $router->setDefaultNamespace('App\\Controllers');
+
+    // Halaman utama
+    $router->addGet('/', [
+        'controller' => 'index',
+        'action'     => 'index',
+    ]);
+
+    $router->addGet('/db-test', [
+        'controller' => 'index',
+        'action' => 'dbTest',
+    ]);
+
+    return $router;
+});
+
+
+// ============================================================
+// VIEW
+// ============================================================
+
 $di->setShared('view', function () {
+
+    // Ambil konfigurasi aplikasi
     $config = $this->getConfig();
 
+    // Membuat View
     $view = new View();
+
+    // Menghubungkan View dengan DI Container
     $view->setDI($this);
-    $view->setViewsDir($config->application->viewsDir);
 
+    // Menentukan lokasi folder views
+    $view->setViewsDir(
+        $config->application->viewsDir
+    );
+
+    // Menggunakan PHP sebagai template engine
     $view->registerEngines([
-        '.volt' => function ($view) {
-            $config = $this->getConfig();
-
-            $volt = new VoltEngine($view, $this);
-
-            $volt->setOptions([
-                'path' => $config->application->cacheDir,
-                'separator' => '_'
-            ]);
-
-            return $volt;
-        },
-        '.phtml' => PhpEngine::class
-
+        '.phtml' => PhpEngine::class,
     ]);
 
     return $view;
 });
 
-/**
- * Database connection is created based in the parameters defined in the configuration file
- */
+
+// ============================================================
+// DATABASE
+// ============================================================
+
 $di->setShared('db', function () {
+
+    // Ambil konfigurasi
     $config = $this->getConfig();
 
-    $class = 'Phalcon\Db\Adapter\Pdo\\' . $config->database->adapter;
-    $params = [
+    // Buat koneksi MySQL
+    return new Mysql([
         'host'     => $config->database->host,
+        'port'     => $config->database->port,
         'username' => $config->database->username,
         'password' => $config->database->password,
         'dbname'   => $config->database->dbname,
-        'charset'  => $config->database->charset
-    ];
-
-    if ($config->database->adapter == 'Postgresql') {
-        unset($params['charset']);
-    }
-
-    return new $class($params);
-});
-
-
-/**
- * If the configuration specify the use of metadata adapter use it or use memory otherwise
- */
-$di->setShared('modelsMetadata', function () {
-    return new MetaDataAdapter();
-});
-
-/**
- * Register the session flash service with the Twitter Bootstrap classes
- */
-$di->set('flash', function () {
-    $escaper = new Escaper();
-    $flash = new Flash($escaper);
-    $flash->setImplicitFlush(false);
-    $flash->setCssClasses([
-        'error'   => 'alert alert-danger',
-        'success' => 'alert alert-success',
-        'notice'  => 'alert alert-info',
-        'warning' => 'alert alert-warning'
     ]);
-
-    return $flash;
 });
 
-/**
- * Start the session the first time some component request the session service
- */
-$di->setShared('session', function () {
-    $session = new SessionManager();
-    $files = new SessionAdapter([
-        'savePath' => sys_get_temp_dir(),
-    ]);
-    $session->setAdapter($files);
-    $session->start();
 
-    return $session;
-});
+return $di;
